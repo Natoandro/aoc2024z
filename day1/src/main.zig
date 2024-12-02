@@ -26,7 +26,7 @@ const LocationIds = struct {
         std.sort.heap(i32, self.secondList.items, void{}, std.sort.asc(i32));
     }
 
-    pub fn difference(self: *const LocationIds) i32 {
+    pub fn distance(self: *const LocationIds) i32 {
         var result: i32 = 0;
         const first = self.firstList.items;
         const second = self.secondList.items;
@@ -37,6 +37,25 @@ const LocationIds = struct {
                 result = result + secondItem - firstItem;
             }
         }
+        return result;
+    }
+
+    pub fn similarityScore(self: *const LocationIds) !i32 {
+        var rightCounterMap = std.AutoHashMap(i32, i32).init(std.heap.page_allocator);
+        defer rightCounterMap.deinit();
+        try rightCounterMap.ensureTotalCapacity(@intCast(self.secondList.items.len));
+
+        for (self.secondList.items) |item| {
+            const counter = try rightCounterMap.getOrPutValue(item, 0);
+            counter.value_ptr.* += 1;
+        }
+
+        var result: i32 = 0;
+        for (self.firstList.items) |item| {
+            const count = rightCounterMap.get(item) orelse 0;
+            result = result + count * item;
+        }
+
         return result;
     }
 };
@@ -53,10 +72,12 @@ pub fn main() !void {
         try locationIds.add(numbers[0], numbers[1]);
     }
     locationIds.sortAll();
-    const result = locationIds.difference();
+    const distance = locationIds.distance();
+    const similarityScore = try locationIds.similarityScore();
 
     const stdout = std.io.getStdOut().writer();
-    try stdout.print("Result: {}\n", .{result});
+    try stdout.print("Distance: {}\n", .{distance});
+    try stdout.print("Similarity score: {}\n", .{similarityScore});
 }
 
 fn parseInputLine(line: []const u8) ![2]i32 {
